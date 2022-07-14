@@ -10,6 +10,9 @@ pretrained
 ckpt
 weights/
 checkpoints/
+datasets/
+work_root/
+.vscode
 
 # C extensions
 *.so

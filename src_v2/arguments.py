@@ -148,7 +148,7 @@ def get_arguments():
         "--train-dir", type=str, nargs="+", default=("./datasets/nyud/",)
     )
     stage_parser.add_argument(
-        "--train-batch-size", type=int, nargs="+", default=(6, 6, 6,)
+        "--train-batch-size", type=int, nargs="+", default=(8, 8, 8,)
     )
     stage_parser.add_argument(
         "--freeze-bn", type=int, choices=[0, 1], nargs="+", default=(1, 1, 1,)

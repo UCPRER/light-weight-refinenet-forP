@@ -9,6 +9,7 @@ PYTHONPATH=$(pwd):$PYTHONPATH python src_v2/train.py \
     --stage-names 'SBD' 'VOC' \
     --augmentations-type 'albumentations'
 
+
 # Uncomment below to download datasets using torchvision API
 # --train-download 1 1 \
 # --val-download 1
