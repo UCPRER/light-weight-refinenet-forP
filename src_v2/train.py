@@ -10,10 +10,10 @@ import torch.nn as nn
 import densetorch as dt
 
 # configuration for light-weight refinenet
-from arguments import get_arguments
-from data import get_datasets, get_transforms
-from network import get_segmenter
-from optimisers import get_optimisers, get_lr_schedulers
+from src_v2.arguments import get_arguments
+from src_v2.data import get_datasets, get_transforms
+from src_v2.network import get_segmenter
+from src_v2.optimisers import get_optimisers, get_lr_schedulers
 
 
 def setup_network(args, device):
@@ -127,8 +127,7 @@ def setup_optimisers_and_schedulers(args, model):
     return optimisers, schedulers
 
 
-def main():
-    args = get_arguments()
+def main(args):
     logger = logging.getLogger(__name__)
     torch.backends.cudnn.deterministic = True
     dt.misc.set_seed(args.random_seed)
@@ -185,9 +184,19 @@ def main():
                 )
 
 
+def run(**kwargs):
+    # Usage: import train; train.run(data='coco128.yaml', imgsz=320, weights='yolov5m.pt')
+    args = get_arguments(True)
+    for k, v in kwargs.items():
+        setattr(args, k, v)
+    main(args)
+    return args
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s :: %(levelname)s :: %(name)s :: %(message)s",
         level=logging.INFO,
     )
-    main()
+    args = get_arguments()
+    main(args)

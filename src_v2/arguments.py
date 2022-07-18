@@ -3,7 +3,7 @@ import argparse
 from densetorch.misc import broadcast
 
 
-def get_arguments():
+def get_arguments(known=False):
     """Parse all the arguments provided from the CLI."""
     parser = argparse.ArgumentParser(
         description="Arguments for Light-Weight-RefineNet Training Pipeline"
@@ -148,7 +148,7 @@ def get_arguments():
         "--train-dir", type=str, nargs="+", default=("./datasets/nyud/",)
     )
     stage_parser.add_argument(
-        "--train-batch-size", type=int, nargs="+", default=(8, 8, 8,)
+        "--train-batch-size", type=int, nargs="+", default=(6, 6, 6,)
     )
     stage_parser.add_argument(
         "--freeze-bn", type=int, choices=[0, 1], nargs="+", default=(1, 1, 1,)
@@ -180,7 +180,7 @@ def get_arguments():
         default=(0.0,),
         help="If > 0.0, clip gradients' norm to this value.",
     )
-    args = parser.parse_args()
+    args = parser.parse_known_args()[0] if known else parser.parse_args()
     # Broadcast all arguments in stage-parser
     for group_action in stage_parser._group_actions:
         argument_name = group_action.dest

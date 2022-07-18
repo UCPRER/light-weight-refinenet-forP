@@ -2,7 +2,7 @@ import numpy as np
 
 import densetorch as dt
 
-from network import get_encoder_and_decoder_params
+from src_v2.network import get_encoder_and_decoder_params
 
 
 def get_lr_schedulers(
