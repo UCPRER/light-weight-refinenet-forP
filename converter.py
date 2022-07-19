@@ -5,12 +5,13 @@ from pycocotools import mask as coco_mask
 from tqdm import tqdm
 import os
 import logging
+LOGGER = logging.getLogger(__name__)
 
 coco_stuff_colormap = np.load('coco_stuff_colormap.npy')
 
 
 def coco_stuff2png(json_path, target_dir, label_shift=0):
-    logging.info('convert coco stuff json to png')
+    LOGGER.info('convert coco stuff json to png')
     color_map = True if label_shift == 0 else False
 
     def mask_generator(width, height, anns):
@@ -48,7 +49,7 @@ def gen_data_list(img_list_path, label_dir, target_path):
             label_name = img_path.rsplit(os.sep, 1)[1].replace('.jpg','.png')
             label_path = os.path.abspath(os.path.join(label_dir, label_name))
             if not os.path.exists(label_path):
-                logging.warning(f'{label_path}not exist')
+                LOGGER.warning(f'{label_path}not exist')
             f.write(img_path+"\t"+label_path+"\n")
 
 

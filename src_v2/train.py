@@ -14,24 +14,27 @@ from src_v2.arguments import get_arguments
 from src_v2.data import get_datasets, get_transforms
 from src_v2.network import get_segmenter
 from src_v2.optimisers import get_optimisers, get_lr_schedulers
+from utils.helpers import select_device
+
+LOGGER = logging.getLogger(__name__)
 
 
 def setup_network(args, device):
-    logger = logging.getLogger(__name__)
     segmenter = get_segmenter(
         enc_backbone=args.enc_backbone,
         enc_pretrained=args.enc_pretrained,
         num_classes=args.num_classes,
     ).to(device)
-    if device == "cuda":
+    if device != "cpu":
         segmenter = nn.DataParallel(segmenter)
-    logger.info(
-        " Loaded Segmenter {}, ImageNet-Pre-Trained={}, #PARAMS={:3.2f}M".format(
-            args.enc_backbone,
-            args.enc_pretrained,
-            dt.misc.compute_params(segmenter) / 1e6,
+    if args.verbose:
+        LOGGER.info(
+            " Loaded Segmenter {}, ImageNet-Pre-Trained={}, #PARAMS={:3.2f}M".format(
+                args.enc_backbone,
+                args.enc_pretrained,
+                dt.misc.compute_params(segmenter) / 1e6,
+            )
         )
-    )
     training_loss = nn.CrossEntropyLoss(ignore_index=args.ignore_label).to(device)
     validation_loss = dt.engine.MeanIoU(num_classes=args.num_classes)
     return segmenter, training_loss, validation_loss
@@ -128,10 +131,10 @@ def setup_optimisers_and_schedulers(args, model):
 
 
 def main(args):
-    logger = logging.getLogger(__name__)
+    # Device
+    device = select_device(args.device, args.train_batch_size, args.verbose)
     torch.backends.cudnn.deterministic = True
     dt.misc.set_seed(args.random_seed)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     # Network
     segmenter, training_loss, validation_loss = setup_network(args, device=device)
     # Data
@@ -152,7 +155,7 @@ def main(args):
         if stage > restart_stage:
             restart_epoch = 0
         for epoch in range(restart_epoch, args.epochs_per_stage[stage]):
-            logger.info(f"Training: stage {stage} epoch {epoch}")
+            LOGGER.info(f"Training: stage {stage} epoch {epoch}")
             dt.engine.train(
                 model=segmenter,
                 opts=optimisers,
@@ -165,7 +168,7 @@ def main(args):
             for scheduler in schedulers:
                 scheduler.step(total_epoch)
             if (epoch + 1) % args.val_every[stage] == 0:
-                logger.info(f"Validation: stage {stage} epoch {epoch}")
+                LOGGER.info(f"Validation: stage {stage} epoch {epoch}")
                 vals = dt.engine.validate(
                     model=segmenter, metrics=validation_loss, dataloader=val_loader,
                 )
@@ -184,11 +187,13 @@ def main(args):
                 )
 
 
-def run(**kwargs):
+def run(unknown_args, **kwargs):
     # Usage: import train; train.run(data='coco128.yaml', imgsz=320, weights='yolov5m.pt')
-    args = get_arguments(True)
+    args = get_arguments(unknown_args)
     for k, v in kwargs.items():
         setattr(args, k, v)
+    if args.verbose:
+        LOGGER.info(f"args:{args}")
     main(args)
     return args
 

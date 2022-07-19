@@ -3,17 +3,13 @@ import argparse
 from densetorch.misc import broadcast
 
 
-def get_arguments(known=False):
+def get_arguments(unknown_args, known=False):
     """Parse all the arguments provided from the CLI."""
-    parser = argparse.ArgumentParser(
-        description="Arguments for Light-Weight-RefineNet Training Pipeline"
-    )
+    parser = argparse.ArgumentParser(description="Arguments for Light-Weight-RefineNet Training Pipeline")
 
     # Common transformations
     parser.add_argument("--img-scale", type=float, default=1.0 / 255)
-    parser.add_argument(
-        "--img-mean", type=float, nargs=3, default=(0.485, 0.456, 0.406)
-    )
+    parser.add_argument("--img-mean", type=float, nargs=3, default=(0.485, 0.456, 0.406))
     parser.add_argument("--img-std", type=float, nargs=3, default=(0.229, 0.224, 0.225))
 
     # Training augmentations
@@ -26,37 +22,57 @@ def get_arguments(known=False):
 
     # Dataset
     parser.add_argument(
-        "--val-list-path", type=str, default="./data/val.nyu",
+        "--val-list-path",
+        type=str,
+        default="./data/val.nyu",
     )
     parser.add_argument(
-        "--val-dir", type=str, default="./datasets/nyud/",
+        "--val-dir",
+        type=str,
+        default="./datasets/nyud/",
     )
     parser.add_argument("--val-batch-size", type=int, default=1)
 
     # Optimisation
     parser.add_argument(
-        "--enc-optim-type", type=str, default="sgd",
+        "--enc-optim-type",
+        type=str,
+        default="sgd",
     )
     parser.add_argument(
-        "--dec-optim-type", type=str, default="sgd",
+        "--dec-optim-type",
+        type=str,
+        default="sgd",
     )
     parser.add_argument(
-        "--enc-lr", type=float, default=5e-4,
+        "--enc-lr",
+        type=float,
+        default=5e-4,
     )
     parser.add_argument(
-        "--dec-lr", type=float, default=5e-3,
+        "--dec-lr",
+        type=float,
+        default=5e-3,
     )
     parser.add_argument(
-        "--enc-weight-decay", type=float, default=1e-5,
+        "--enc-weight-decay",
+        type=float,
+        default=1e-5,
     )
     parser.add_argument(
-        "--dec-weight-decay", type=float, default=1e-5,
+        "--dec-weight-decay",
+        type=float,
+        default=1e-5,
     )
     parser.add_argument(
-        "--enc-momentum", type=float, default=0.9,
+        "--enc-momentum",
+        type=float,
+        default=0.9,
     )
     parser.add_argument(
-        "--dec-momentum", type=float, default=0.9,
+        "--dec-momentum",
+        type=float,
+        default=0.9,
     )
     parser.add_argument(
         "--enc-lr-gamma",
@@ -91,10 +107,8 @@ def get_arguments(known=False):
     parser.add_argument("--random-seed", type=int, default=42)
 
     # Training / validation setup
-    parser.add_argument(
-        "--enc-backbone", type=str, choices=["50", "101", "152", "mbv2"], default="50"
-    )
-    parser.add_argument("--enc-pretrained", type=int, choices=[0, 1], default=1)
+    parser.add_argument("--enc-backbone", type=str, choices=["50", "101", "152", "mbv2"], default="50")
+    parser.add_argument("--enc-pretrained", type=int, choices=[0, 1], default=0)
     parser.add_argument(
         "--num-stages",
         type=int,
@@ -130,39 +144,93 @@ def get_arguments(known=False):
     # Arguments broadcastable across training stages
     stage_parser = parser.add_argument_group("stage-parser")
     stage_parser.add_argument(
-        "--crop-size", type=int, nargs="+", default=(500, 500, 500,)
+        "--crop-size",
+        type=int,
+        nargs="+",
+        default=(
+            500,
+            500,
+            500,
+        ),
     )
     stage_parser.add_argument(
-        "--shorter-side", type=int, nargs="+", default=(350, 350, 350,)
+        "--shorter-side",
+        type=int,
+        nargs="+",
+        default=(
+            350,
+            350,
+            350,
+        ),
     )
     stage_parser.add_argument(
-        "--low-scale", type=float, nargs="+", default=(0.5, 0.5, 0.5,)
+        "--low-scale",
+        type=float,
+        nargs="+",
+        default=(
+            0.5,
+            0.5,
+            0.5,
+        ),
     )
     stage_parser.add_argument(
-        "--high-scale", type=float, nargs="+", default=(2.0, 2.0, 2.0,)
+        "--high-scale",
+        type=float,
+        nargs="+",
+        default=(
+            2.0,
+            2.0,
+            2.0,
+        ),
+    )
+    stage_parser.add_argument("--train-list-path", type=str, nargs="+", default=("./data/train.nyu",))
+    stage_parser.add_argument("--train-dir", type=str, nargs="+", default=("./datasets/nyud/",))
+    stage_parser.add_argument(
+        "--train-batch-size",
+        type=int,
+        nargs="+",
+        default=(
+            6,
+            6,
+            6,
+        ),
     )
     stage_parser.add_argument(
-        "--train-list-path", type=str, nargs="+", default=("./data/train.nyu",)
+        "--freeze-bn",
+        type=int,
+        choices=[0, 1],
+        nargs="+",
+        default=(
+            1,
+            1,
+            1,
+        ),
     )
     stage_parser.add_argument(
-        "--train-dir", type=str, nargs="+", default=("./datasets/nyud/",)
+        "--epochs-per-stage",
+        type=int,
+        nargs="+",
+        default=(100, 100, 100),
     )
     stage_parser.add_argument(
-        "--train-batch-size", type=int, nargs="+", default=(6, 6, 6,)
+        "--val-every",
+        type=int,
+        nargs="+",
+        default=(
+            5,
+            5,
+            5,
+        ),
     )
-    stage_parser.add_argument(
-        "--freeze-bn", type=int, choices=[0, 1], nargs="+", default=(1, 1, 1,)
-    )
-    stage_parser.add_argument(
-        "--epochs-per-stage", type=int, nargs="+", default=(100, 100, 100),
-    )
-    stage_parser.add_argument("--val-every", type=int, nargs="+", default=(5, 5, 5,))
     stage_parser.add_argument(
         "--stage-names",
         type=str,
         nargs="+",
         choices=["SBD", "VOC"],
-        default=("SBD", "VOC",),
+        default=(
+            "SBD",
+            "VOC",
+        ),
         help="Only used if dataset_type == torchvision.",
     )
     stage_parser.add_argument(
@@ -170,7 +238,10 @@ def get_arguments(known=False):
         type=int,
         nargs="+",
         choices=[0, 1],
-        default=(0, 0,),
+        default=(
+            0,
+            0,
+        ),
         help="Only used if dataset_type == torchvision.",
     )
     stage_parser.add_argument(
@@ -180,7 +251,7 @@ def get_arguments(known=False):
         default=(0.0,),
         help="If > 0.0, clip gradients' norm to this value.",
     )
-    args = parser.parse_known_args()[0] if known else parser.parse_args()
+    args = parser.parse_known_args(unknown_args)[0] if known else parser.parse_args(unknown_args)
     # Broadcast all arguments in stage-parser
     for group_action in stage_parser._group_actions:
         argument_name = group_action.dest

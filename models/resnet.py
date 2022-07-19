@@ -233,7 +233,7 @@ class ResNetLW(nn.Module):
         return out
 
 
-def rf_lw50(num_classes, imagenet=False, pretrained=True, **kwargs):
+def rf_lw50(num_classes, imagenet=False, pretrained=False, **kwargs):
     model = ResNetLW(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, **kwargs)
     if imagenet:
         key = "50_imagenet"
@@ -249,7 +249,7 @@ def rf_lw50(num_classes, imagenet=False, pretrained=True, **kwargs):
     return model
 
 
-def rf_lw101(num_classes, imagenet=False, pretrained=True, **kwargs):
+def rf_lw101(num_classes, imagenet=False, pretrained=False, **kwargs):
     model = ResNetLW(Bottleneck, [3, 4, 23, 3], num_classes=num_classes, **kwargs)
     if imagenet:
         key = "101_imagenet"
@@ -265,7 +265,7 @@ def rf_lw101(num_classes, imagenet=False, pretrained=True, **kwargs):
     return model
 
 
-def rf_lw152(num_classes, imagenet=False, pretrained=True, **kwargs):
+def rf_lw152(num_classes, imagenet=False, pretrained=False, **kwargs):
     model = ResNetLW(Bottleneck, [3, 8, 36, 3], num_classes=num_classes, **kwargs)
     if imagenet:
         key = "152_imagenet"

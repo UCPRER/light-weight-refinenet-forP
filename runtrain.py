@@ -6,6 +6,8 @@ from converter import coco_stuff2png, gen_data_list
 import logging
 import os
 import src_v2.train as train
+from pycocotools.coco import COCO
+from utils.helpers import suppress_stdout
 
 
 def get_args():
@@ -21,15 +23,23 @@ def get_args():
     parser.add_argument("--device", default="", help="cpu or cuda device, i.e. 0 or 0,1,2,3 or cpu")
     parser.add_argument("--ignore-label", type=int, default=0, help="Ignore this label in the training loss")
     parser.add_argument(
-        "--label-value-shift", type=int, default=0, help="Increase or decrease the value of the each label"
+        "--label-value-shift",
+        type=int,
+        default=0,
+        help="Add or subtract a number to the label value(both train and val)",
     )
+    parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
+    parser.add_argument("--development", action="store_true", help="development mode")
 
-    args = parser.parse_args()
-    return args
+    args, unknown_args = parser.parse_known_args()
+    return args, unknown_args
 
 
-def main():
-    args = get_args()
+def main(args, unknown_args):
+    LOGGER = logging.getLogger(__name__)
+    if args.verbose:
+        LOGGER.info(f"args:{args}")
+        LOGGER.info(f"unknown_args:{unknown_args}")
     assert args.work_dir, "work-dir is required"
     root = Path(args.work_dir)
 
@@ -48,14 +58,16 @@ def main():
         val_label_path = "labels/val"
         train_list_path = "coco.train"
         val_list_path = "coco.val"
-        if not os.path.exists(root / train_label_path):  # TODO: MD5 check
-            coco_stuff2png(
-                json_path=args.train_annotation, save_path=root / train_label_path, label_shift=args.label_value_shift
-            )
-        if not os.path.exists(root / val_label_path):
-            coco_stuff2png(
-                json_path=args.val_annotation, save_path=root / val_label_path, label_shift=args.label_value_shift
-            )
+        
+        with suppress_stdout(not args.verbose):
+            coco = COCO(args.val_annotation)
+            if not args.development:
+                coco_stuff2png(
+                    json_path=args.train_annotation, target_dir=root / train_label_path, label_shift=args.label_value_shift
+                )
+                coco_stuff2png(
+                    json_path=args.val_annotation, target_dir=root / val_label_path, label_shift=args.label_value_shift
+                )
         gen_data_list(
             img_list_path=args.train_list, label_dir=root / train_label_path, target_path=root / train_list_path
         )
@@ -68,21 +80,31 @@ def main():
                 hyp = json.load(f)
 
         train.run(
+            unknown_args,
             enc_backbone="50",
             train_dir=["/"],
             val_dir="/",
-            train_list_path=[os.path.abspath(root/train_list_path)],
-            val_list_path=os.path.abspath(root/val_list_path),
+            train_list_path=[os.path.abspath(root / train_list_path)],
+            val_list_path=os.path.abspath(root / val_list_path),
             num_stages=1,
-            num_classes=93,
+            num_classes=len(coco.getCatIds()) + 1,  # 0
             ignore_label=args.ignore_label,
-            **hyp
+            verbose=args.verbose,
+            device=args.device,
+            ckpt_dir=os.path.abspath(root / "checkpoints"),
+            ckpt_path=os.path.abspath(root / "checkpoints/checkpoint.pth.tar"),
+            **hyp,
         )
 
 
 if __name__ == "__main__":
+    args, unknown_args = get_args()
+    if args.development:
+        fstr = "[%(asctime)s][%(filename)s][line:%(lineno)d][%(levelname)s] %(message)s"
+    else:
+        fstr = "[%(asctime)s][%(levelname)s] %(message)s"
     logging.basicConfig(
-        format="%(asctime)s :: %(levelname)s :: %(name)s :: %(message)s",
+        format=fstr,
         level=logging.INFO,
     )
-    main()
+    main(args, unknown_args)
