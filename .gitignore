@@ -11,7 +11,7 @@ ckpt
 weights/
 checkpoints/
 datasets/
-work_root/
+work_root*
 .vscode
 
 # C extensions

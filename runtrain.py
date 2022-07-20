@@ -4,10 +4,10 @@ import sys
 import json
 from converter import coco_stuff2png, gen_data_list
 import logging
-import os
 import src_v2.train as train
 from pycocotools.coco import COCO
 from utils.helpers import suppress_stdout
+from utils.logger import Logger
 
 
 def get_args():
@@ -41,7 +41,7 @@ def main(args, unknown_args):
         LOGGER.info(f"args:{args}")
         LOGGER.info(f"unknown_args:{unknown_args}")
     assert args.work_dir, "work-dir is required"
-    root = Path(args.work_dir)
+    root = Path(args.work_dir).absolute()
 
     if args.log_enable:
         out_file = open(root / "out.txt", "w")
@@ -84,15 +84,16 @@ def main(args, unknown_args):
             enc_backbone="50",
             train_dir=["/"],
             val_dir="/",
-            train_list_path=[os.path.abspath(root / train_list_path)],
-            val_list_path=os.path.abspath(root / val_list_path),
+            train_list_path=[root / train_list_path],
+            val_list_path=root / val_list_path,
             num_stages=1,
             num_classes=len(coco.getCatIds()) + 1,  # 0
             ignore_label=args.ignore_label,
             verbose=args.verbose,
             device=args.device,
-            ckpt_dir=os.path.abspath(root / "checkpoints"),
-            ckpt_path=os.path.abspath(root / "checkpoints/checkpoint.pth.tar"),
+            ckpt_dir=root / "checkpoints",
+            ckpt_path=root / "checkpoints/checkpoint.pth.tar",
+            logger=Logger(root),
             **hyp,
         )
 

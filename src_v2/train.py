@@ -47,13 +47,7 @@ def setup_checkpoint_and_maybe_restore(args, model, optimisers, schedulers):
         best_val=0,
         condition=lambda x, y: x > y,
     )  # keep checkpoint with the best validation score
-    (
-        epoch_start,
-        _,
-        model_state_dict,
-        optims_state_dict,
-        scheds_state_dict,
-    ) = saver.maybe_load(
+    (epoch_start, _, model_state_dict, optims_state_dict, scheds_state_dict,) = saver.maybe_load(
         ckpt_path=args.ckpt_path,
         keys_to_load=["epoch", "best_val", "model", "optimisers", "schedulers"],
     )
@@ -130,6 +124,54 @@ def setup_optimisers_and_schedulers(args, model):
     return optimisers, schedulers
 
 
+def train(model, opts, crits, dataloader, loss_coeffs=(1.0,), freeze_bn=False, grad_norm=0.0):
+    from tqdm import tqdm
+    import torch.nn.functional as F
+    from densetorch.misc.utils import AverageMeter, make_list
+    from densetorch.engine.trainval import get_input_and_targets
+    
+    
+    model.train()
+    if freeze_bn:
+        for m in model.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.eval()
+    device = next(model.parameters()).device
+    opts = make_list(opts)
+    crits = make_list(crits)
+    loss_coeffs = make_list(loss_coeffs)
+    loss_meter = AverageMeter()
+    pbar = tqdm(dataloader)
+
+    for sample in pbar:
+        loss = 0.0
+        input, targets = get_input_and_targets(
+            sample=sample, dataloader=dataloader, device=device
+        )
+        outputs = model(input)
+        outputs = make_list(outputs)
+        for out, target, crit, loss_coeff in zip(outputs, targets, crits, loss_coeffs):
+            loss += loss_coeff * crit(
+                F.interpolate(
+                    out, size=target.size()[1:], mode="bilinear", align_corners=False
+                ).squeeze(dim=1),
+                target.squeeze(dim=1),
+            )
+        for opt in opts:
+            opt.zero_grad()
+        loss.backward()
+        if grad_norm > 0.0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_norm)
+        for opt in opts:
+            opt.step()
+
+        loss_meter.update(loss.item())
+        pbar.set_description(
+            "Loss {:.3f} | Avg. Loss {:.3f}".format(loss.item(), loss_meter.avg)
+        )
+    return make_list(loss_meter.avg)
+
+
 def main(args):
     # Device
     device = select_device(args.device, args.train_batch_size, args.verbose)
@@ -143,7 +185,10 @@ def main(args):
     optimisers, schedulers = setup_optimisers_and_schedulers(args, model=segmenter)
     # Checkpoint
     saver, restart_epoch = setup_checkpoint_and_maybe_restore(
-        args, model=segmenter, optimisers=optimisers, schedulers=schedulers,
+        args,
+        model=segmenter,
+        optimisers=optimisers,
+        schedulers=schedulers,
     )
     # Calculate from which stage and which epoch to restart the training
     total_epoch = restart_epoch
@@ -156,7 +201,7 @@ def main(args):
             restart_epoch = 0
         for epoch in range(restart_epoch, args.epochs_per_stage[stage]):
             LOGGER.info(f"Training: stage {stage} epoch {epoch}")
-            dt.engine.train(
+            loss = train(
                 model=segmenter,
                 opts=optimisers,
                 crits=training_loss,
@@ -164,25 +209,25 @@ def main(args):
                 freeze_bn=args.freeze_bn[stage],
                 grad_norm=args.grad_norm[stage],
             )
+            args.logger.on_train_epoch_end(loss, epoch)
             total_epoch += 1
             for scheduler in schedulers:
                 scheduler.step(total_epoch)
             if (epoch + 1) % args.val_every[stage] == 0:
                 LOGGER.info(f"Validation: stage {stage} epoch {epoch}")
                 vals = dt.engine.validate(
-                    model=segmenter, metrics=validation_loss, dataloader=val_loader,
+                    model=segmenter,
+                    metrics=validation_loss,
+                    dataloader=val_loader,
                 )
+                args.logger.on_val_end(vals)
                 saver.maybe_save(
                     new_val=vals,
                     dict_to_save={
                         "model": segmenter.state_dict(),
                         "epoch": total_epoch,
-                        "optimisers": [
-                            optimiser.state_dict() for optimiser in optimisers
-                        ],
-                        "schedulers": [
-                            scheduler.state_dict() for scheduler in schedulers
-                        ],
+                        "optimisers": [optimiser.state_dict() for optimiser in optimisers],
+                        "schedulers": [scheduler.state_dict() for scheduler in schedulers],
                     },
                 )
 
@@ -200,7 +245,7 @@ def run(unknown_args, **kwargs):
 
 if __name__ == "__main__":
     logging.basicConfig(
-        format="%(asctime)s :: %(levelname)s :: %(name)s :: %(message)s",
+        format="[%(asctime)s][%(filename)s][line:%(lineno)d][%(levelname)s] %(message)s",
         level=logging.INFO,
     )
     args = get_arguments()
