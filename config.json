@@ -1,4 +1,8 @@
 {
+    "enc_backbone":"mbv2",
+    "num_stages":1,
+    "epochs_per_stage":[100],
     "train_batch_size":6,
-    "val_every":[1]
+    "enc_lr_gamma":0.5,
+    "dec_lr_gamma":0.5
 }

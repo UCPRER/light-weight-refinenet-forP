@@ -217,9 +217,9 @@ def get_arguments(unknown_args, known=False):
         type=int,
         nargs="+",
         default=(
-            5,
-            5,
-            5,
+            1,
+            1,
+            1,
         ),
     )
     stage_parser.add_argument(

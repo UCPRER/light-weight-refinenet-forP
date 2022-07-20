@@ -81,12 +81,10 @@ def main(args, unknown_args):
 
         train.run(
             unknown_args,
-            enc_backbone="50",
             train_dir=["/"],
             val_dir="/",
             train_list_path=[root / train_list_path],
             val_list_path=root / val_list_path,
-            num_stages=1,
             num_classes=len(coco.getCatIds()) + 1,  # 0
             ignore_label=args.ignore_label,
             verbose=args.verbose,
