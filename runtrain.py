@@ -10,6 +10,9 @@ from utils.helpers import suppress_stdout
 from utils.logger import Logger
 
 
+root = None
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--work-dir", default="", help="where to store temp files")
@@ -40,13 +43,6 @@ def main(args, unknown_args):
     if args.verbose:
         LOGGER.info(f"args:{args}")
         LOGGER.info(f"unknown_args:{unknown_args}")
-    assert args.work_dir, "work-dir is required"
-    root = Path(args.work_dir).absolute()
-
-    if args.log_enable:
-        out_file = open(root / "out.txt", "w")
-        sys.stdout = out_file
-        sys.stderr = out_file
 
     if args.label_type == "coco":
         assert args.train_list, "train-list is required"
@@ -98,10 +94,18 @@ def main(args, unknown_args):
 
 if __name__ == "__main__":
     args, unknown_args = get_args()
+    assert args.work_dir, "work-dir is required"
+    root = Path(args.work_dir).absolute()
+    if args.log_enable:
+        out_file = open(root / "out.txt", "w")
+        sys.stdout = out_file
+        sys.stderr = out_file
+
     if args.development:
         fstr = "[%(asctime)s][%(filename)s][line:%(lineno)d][%(levelname)s] %(message)s"
     else:
         fstr = "[%(asctime)s][%(levelname)s] %(message)s"
+
     logging.basicConfig(
         format=fstr,
         level=logging.INFO,
